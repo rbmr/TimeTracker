@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.rbmr.timetracker.data.database.WorkSession
 import com.rbmr.timetracker.ui.components.DateTimeRow
+import com.rbmr.timetracker.ui.components.NoteRow
 import com.rbmr.timetracker.utils.formatDuration
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -38,8 +39,6 @@ fun EditScreen(
     fun persistChanges() {
         val updated = session.copy(
             startTime = startTime.toEpochMilliseconds(),
-            // If it was already historical, we save the end time.
-            // If it's ongoing, we leave it null until "Save" is clicked.
             endTime = if (!isOngoing) endTime.toEpochMilliseconds() else null,
             note = note
         )
@@ -48,11 +47,7 @@ fun EditScreen(
 
     // Auto-save effects (Debouncing could be added here or in VM, simplified here)
     LaunchedEffect(startTime, note) { persistChanges() }
-
-    // Only auto-save endTime if it's NOT an ongoing session (Punch out hasn't happened yet)
-    LaunchedEffect(endTime) {
-        if (!isOngoing) persistChanges()
-    }
+    LaunchedEffect(endTime) { if (!isOngoing) persistChanges() }
 
     Scaffold(
         topBar = {
@@ -86,21 +81,17 @@ fun EditScreen(
             DateTimeRow("End Time", endTime) { endTime = it }
 
             Spacer(Modifier.height(16.dp))
-            OutlinedTextField(
-                value = note,
-                onValueChange = { note = it },
-                label = { Text("Note") },
-                modifier = Modifier.fillMaxWidth().height(150.dp)
+
+            NoteRow(
+                note = note,
+                onUpdateNote = { newNote -> note = newNote }
             )
 
             Spacer(Modifier.weight(1f))
 
-            // The "Save" button acts as the confirmation for Punch Out
             Button(
                 modifier = Modifier.fillMaxWidth(),
-                onClick = {
-                    onSaveAndExit(endTime.toEpochMilliseconds())
-                }
+                onClick = { onSaveAndExit(endTime.toEpochMilliseconds()) }
             ) { Text("Save") }
         }
     }

@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.rbmr.timetracker.data.database.WorkSession
 import com.rbmr.timetracker.ui.components.DateTimeRow
+import com.rbmr.timetracker.ui.components.NoteRow
 import com.rbmr.timetracker.utils.formatDuration
 import kotlinx.coroutines.delay
 import kotlin.time.Clock
@@ -24,35 +25,11 @@ fun WorkingScreen(
 ) {
     // Local UI State for the ticking clock only
     var currentTime by remember { mutableStateOf(Clock.System.now()) }
-    var showNoteDialog by remember { mutableStateOf(false) }
-
-    // Sync local note state with DB session initially
-    // We use a local state to drive the text field immediately
-    var currentNote by remember(session?.note) { mutableStateOf(session?.note ?: "") }
-
     LaunchedEffect(Unit) {
         while (true) {
             currentTime = Clock.System.now()
             delay(1000L)
         }
-    }
-
-    if (showNoteDialog) {
-        AlertDialog(
-            onDismissRequest = { showNoteDialog = false },
-            title = { Text("Edit Note") },
-            text = {
-                OutlinedTextField(
-                    value = currentNote,
-                    onValueChange = {
-                        currentNote = it
-                        onNoteChange(it) // Send to VM to debounce/save
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            confirmButton = { TextButton(onClick = { showNoteDialog = false }) { Text("Done") } }
-        )
     }
 
     Scaffold(
@@ -93,12 +70,10 @@ fun WorkingScreen(
 
                 Spacer(Modifier.height(16.dp))
 
-                OutlinedButton(
-                    onClick = { showNoteDialog = true },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(if (currentNote.isEmpty()) "Add Note" else "Edit Note")
-                }
+                NoteRow(
+                    note = session.note,
+                    onUpdateNote = onNoteChange
+                )
 
                 Spacer(Modifier.weight(1f))
 
