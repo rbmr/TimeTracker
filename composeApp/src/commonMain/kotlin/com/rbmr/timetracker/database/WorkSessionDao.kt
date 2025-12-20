@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface WorkSessionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(session: WorkSession)
+    suspend fun insert(session: WorkSession): Long
 
     @Update
     suspend fun update(session: WorkSession)
@@ -25,10 +25,15 @@ interface WorkSessionDao {
     @Query("SELECT * FROM WorkSession WHERE id = :id")
     suspend fun getSessionById(id: Long): WorkSession?
 
+    @Query("SELECT * FROM WorkSession WHERE id = :id")
+    fun getSessionByIdFlow(id: Long): Flow<WorkSession?>
+
     @Query("SELECT * FROM WorkSession WHERE endTime IS NOT NULL ORDER BY startTime DESC")
-    fun getHistoricalSessions(): Flow<List<WorkSession>>
+    fun getHistoricalSessionsFlow(): Flow<List<WorkSession>>
 
     @Query("SELECT * FROM WorkSession WHERE endTime IS NULL LIMIT 1")
     suspend fun getOngoingSession(): WorkSession?
 
+    @Query("SELECT * FROM WorkSession WHERE endTime IS NULL LIMIT 1")
+    fun getOngoingSessionFlow(): Flow<WorkSession?>
 }
