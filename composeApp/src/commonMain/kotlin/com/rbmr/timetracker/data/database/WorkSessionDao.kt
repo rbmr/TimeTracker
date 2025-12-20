@@ -1,4 +1,4 @@
-package com.rbmr.timetracker.database
+package com.rbmr.timetracker.data.database
 
 import androidx.room.Dao
 import androidx.room.Delete

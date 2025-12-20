@@ -1,4 +1,4 @@
-package com.rbmr.timetracker.ui
+package com.rbmr.timetracker.ui.home
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -8,10 +8,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.rbmr.timetracker.data.database.WorkSession
 
 @Composable
 fun HomeScreen(
-    ongoingSessionExists: Boolean,
+    ongoingSession: WorkSession?,
     onPunchIn: () -> Unit,
     onHistory: () -> Unit
 ) {
@@ -26,7 +27,7 @@ fun HomeScreen(
             contentPadding = PaddingValues(16.dp)
         ) {
             Text(
-                text = if (ongoingSessionExists) "Resume" else "Punch In",
+                text = if (ongoingSession != null) "Resume" else "Punch In",
                 style = MaterialTheme.typography.headlineMedium,
                 textAlign = TextAlign.Center
             )

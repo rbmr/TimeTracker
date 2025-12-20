@@ -1,4 +1,4 @@
-package com.rbmr.timetracker.ui
+package com.rbmr.timetracker.ui.edit
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -8,7 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.rbmr.timetracker.database.WorkSession
+import com.rbmr.timetracker.data.database.WorkSession
 import com.rbmr.timetracker.ui.components.DateTimeRow
 import com.rbmr.timetracker.utils.formatDuration
 import kotlin.time.Clock
@@ -18,17 +18,14 @@ import kotlin.time.Instant
 fun EditScreen(
     session: WorkSession,
     onUpdateSession: (WorkSession) -> Unit,
-    onSaveAndExit: () -> Unit,
+    onSaveAndExit: (Long) -> Unit, // Pass end time
     onBack: () -> Unit,
     onDelete: () -> Unit
 ) {
-    // Determine if this is a "Punch Out" scenario (Active session)
     val isOngoing = remember { session.endTime == null }
 
-    // Form State (initialized from passed session)
+    // Local State for immediate UI feedback
     var startTime by remember { mutableStateOf(Instant.fromEpochMilliseconds(session.startTime)) }
-
-    // If ongoing, default End Time to Now (for display/picking), but don't save it yet.
     var endTime by remember {
         mutableStateOf(
             if (session.endTime != null) Instant.fromEpochMilliseconds(session.endTime)
@@ -37,26 +34,24 @@ fun EditScreen(
     }
     var note by remember { mutableStateOf(session.note) }
 
-    // Helper to build the object based on current form state
-    fun createSession(forceEndTime: Boolean): WorkSession {
-        return session.copy(
+    // Helper to sync local changes to DB immediately (for historical edits)
+    fun persistChanges() {
+        val updated = session.copy(
             startTime = startTime.toEpochMilliseconds(),
-            // Only write end time if forced (Save clicked) or if it was already historical
-            endTime = if (forceEndTime || !isOngoing) endTime.toEpochMilliseconds() else null,
+            // If it was already historical, we save the end time.
+            // If it's ongoing, we leave it null until "Save" is clicked.
+            endTime = if (!isOngoing) endTime.toEpochMilliseconds() else null,
             note = note
         )
+        onUpdateSession(updated)
     }
 
-    // Auto-save Fields (React to changes)
-    LaunchedEffect(startTime, note) {
-        onUpdateSession(createSession(forceEndTime = false))
-    }
+    // Auto-save effects (Debouncing could be added here or in VM, simplified here)
+    LaunchedEffect(startTime, note) { persistChanges() }
 
-    // If we change End Time on a historical session, save it immediately.
+    // Only auto-save endTime if it's NOT an ongoing session (Punch out hasn't happened yet)
     LaunchedEffect(endTime) {
-        if (!isOngoing) {
-            onUpdateSession(createSession(forceEndTime = false))
-        }
+        if (!isOngoing) persistChanges()
     }
 
     Scaffold(
@@ -67,7 +62,7 @@ fun EditScreen(
                 Alignment.CenterVertically
             ) {
                 TextButton(onClick = onBack) { Text("Back") }
-                Text("Edit Session", style = MaterialTheme.typography.titleMedium)
+                Text(if (isOngoing) "Punch Out" else "Edit Session", style = MaterialTheme.typography.titleMedium)
                 TextButton(
                     onClick = onDelete,
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
@@ -76,7 +71,10 @@ fun EditScreen(
         }
     ) { padding ->
         Column(
-            Modifier.fillMaxSize().padding(padding).padding(16.dp).verticalScroll(rememberScrollState())
+            Modifier.fillMaxSize()
+                .padding(padding)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState())
         ) {
             Text(
                 text = "Total Time: ${formatDuration(startTime, endTime)}",
@@ -96,12 +94,12 @@ fun EditScreen(
             )
 
             Spacer(Modifier.weight(1f))
+
+            // The "Save" button acts as the confirmation for Punch Out
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = {
-                    // Force Save the End Time (Punch Out)
-                    onUpdateSession(createSession(forceEndTime = true))
-                    onSaveAndExit()
+                    onSaveAndExit(endTime.toEpochMilliseconds())
                 }
             ) { Text("Save") }
         }

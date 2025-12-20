@@ -3,7 +3,7 @@ package com.rbmr.timetracker
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import com.rbmr.timetracker.database.appContext
+import com.rbmr.timetracker.data.database.appContext
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

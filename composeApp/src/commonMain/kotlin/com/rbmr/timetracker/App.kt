@@ -7,153 +7,128 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
-import com.rbmr.timetracker.database.WorkSession
-import com.rbmr.timetracker.database.getDatabaseBuilder
-import com.rbmr.timetracker.ui.*
-import kotlinx.coroutines.launch
-import kotlin.time.Clock
+import com.rbmr.timetracker.data.repository.WorkSessionRepository
+import com.rbmr.timetracker.data.database.getDatabaseBuilder
+import com.rbmr.timetracker.ui.navigation.Route
+import com.rbmr.timetracker.ui.edit.EditScreen
+import com.rbmr.timetracker.ui.edit.EditViewModel
+import com.rbmr.timetracker.ui.history.HistoryScreen
+import com.rbmr.timetracker.ui.history.HistoryViewModel
+import com.rbmr.timetracker.ui.home.HomeScreen
+import com.rbmr.timetracker.ui.home.HomeViewModel
+import com.rbmr.timetracker.ui.working.WorkingScreen
+import com.rbmr.timetracker.ui.working.WorkingViewModel
+import com.rbmr.timetracker.utils.getShareHelper
 
 @Composable
 fun App() {
     MaterialTheme {
-        // Initialization
+        // Dependency Injection (Simplified Manual DI)
+        // ideally, these singleton instances would live in a real DI container
         val db = remember {
             getDatabaseBuilder()
                 .setDriver(BundledSQLiteDriver())
                 .fallbackToDestructiveMigration(true)
                 .build()
         }
-        val dao = db.workSessionDao()
-        val navController = rememberNavController()
-        val scope = rememberCoroutineScope()
+        val repository = remember { WorkSessionRepository(db.workSessionDao()) }
+        val shareHelper = remember { getShareHelper() }
 
-        // Navigation Controller (Shows the Screens)
+        val navController = rememberNavController()
+
         NavHost(navController = navController, startDestination = Route.Home) {
 
-            // HOME SCREEN
+            // HOME
             composable<Route.Home> {
-                val ongoingSession by dao.getOngoingSessionFlow().collectAsState(initial = null)
+                val viewModel = viewModel { HomeViewModel(repository) }
+                val ongoingSession by viewModel.ongoingSession.collectAsState()
 
                 HomeScreen(
-                    ongoingSessionExists = (ongoingSession != null),
+                    ongoingSession = ongoingSession,
                     onPunchIn = {
-                        if (ongoingSession != null) {
-                            // Resume existing
-                            navController.navigate(Route.Working)
-                        } else {
-                            // Create new, then go to Working
-                            scope.launch {
-                                val newSession = WorkSession(
-                                    startTime = Clock.System.now().toEpochMilliseconds(),
-                                    endTime = null,
-                                    note = ""
-                                )
-                                dao.insert(newSession)
-                                navController.navigate(Route.Working)
-                            }
-                        }
+                        viewModel.onPunchIn { navController.navigate(Route.Working) }
                     },
                     onHistory = { navController.navigate(Route.History) }
                 )
             }
 
-            // WORKING SCREEN
+            // WORKING
             composable<Route.Working> {
-                val ongoingSession by dao.getOngoingSessionFlow().collectAsState(initial = null)
+                val viewModel = viewModel { WorkingViewModel(repository) }
+                val session by viewModel.session.collectAsState()
 
                 WorkingScreen(
-                    session = ongoingSession,
-                    onUpdateSession = { updated -> scope.launch { dao.update(updated) } },
+                    session = session,
+                    onNoteChange = viewModel::onNoteChange,
+                    onUpdateStartTime = viewModel::onUpdateStartTime,
                     onPunchOut = { id -> navController.navigate(Route.Edit(id)) },
                     onBack = {
-                        navController.navigate(Route.Home) {
-                            popUpTo(Route.Home) { inclusive = true }
-                        }
+                        navController.navigate(Route.Home) { popUpTo(Route.Home) { inclusive = true } }
                     },
-                    onDelete = { sessionToDelete ->
-                        scope.launch {
-                            dao.delete(sessionToDelete)
-                            navController.navigate(Route.Home) {
-                                popUpTo(Route.Home) { inclusive = true }
-                            }
+                    onDelete = {
+                        viewModel.onDeleteSession {
+                            navController.navigate(Route.Home) { popUpTo(Route.Home) { inclusive = true } }
                         }
                     }
                 )
             }
 
-            // HISTORY SCREEN
+            // HISTORY
             composable<Route.History> {
-                val historySessions by dao.getHistoricalSessionsFlow().collectAsState(initial = emptyList())
+                val viewModel = viewModel { HistoryViewModel(repository, shareHelper) }
+                val sessions by viewModel.historicalSessions.collectAsState()
 
                 HistoryScreen(
-                    sessions = historySessions,
+                    sessions = sessions,
                     onEdit = { id -> navController.navigate(Route.Edit(id)) },
+                    onExport = { viewModel.exportHistory(sessions) },
                     onBack = {
-                        navController.navigate(Route.Home) {
-                            popUpTo(Route.Home) { inclusive = true }
-                        }
+                        navController.navigate(Route.Home) { popUpTo(Route.Home) { inclusive = true } }
                     }
                 )
             }
 
-            // EDIT SCREEN
+            // EDIT
             composable<Route.Edit> { backStackEntry ->
                 val route = backStackEntry.toRoute<Route.Edit>()
-                val id = route.sessionId
-                val session by dao.getSessionByIdFlow(id).collectAsState(initial = null)
+                val viewModel = viewModel { EditViewModel(repository, route.sessionId) }
+                val session by viewModel.sessionState.collectAsState()
 
-                // A. Resolve Data: Find the object in our global lists
-                val isOngoing = remember(session?.id) {
-                    session?.endTime == null
-                }
-
-                // B. Render
                 if (session != null) {
                     EditScreen(
                         session = session!!,
-                        onUpdateSession = { updated -> scope.launch { dao.update(updated) } },
-                        onSaveAndExit = {
-                            if (isOngoing) {
-                                // Working -> PunchOut -> Save -> Home
-                                navController.navigate(Route.Home) {
-                                    popUpTo(Route.Home) { inclusive = true }
-                                }
-                            } else {
-                                // History -> Edit -> Save -> History
-                                navController.popBackStack()
-                            }
-                        },
-                        onBack = {
-                            if (isOngoing) {
-                                // Working -> PunchOut -> Back -> Working (Cancel punch out)
-                                navController.popBackStack()
-                            } else {
-                                // History -> Edit -> Back -> History
-                                navController.popBackStack()
-                            }
-                        },
-                        onDelete = {
-                            scope.launch {
-                                dao.delete(session!!)
-                                if (isOngoing) {
-                                    // Working -> PunchOut -> Delete -> Home
-                                    navController.navigate(Route.Home) {
-                                        popUpTo(Route.Home) { inclusive = true }
-                                    }
+                        onUpdateSession = viewModel::updateSession,
+                        onSaveAndExit = { endTime ->
+                            viewModel.saveAndExit(session!!, endTime) {
+                                // Logic: If we came from Working (Punch Out), go Home.
+                                // If we came from History, go back.
+                                // Simple heuristic: pop back stack. If empty or home, good.
+                                // But specifically for "Punch Out", we usually want Home.
+                                if (navController.previousBackStackEntry?.destination?.route?.contains("Working") == true) {
+                                    navController.navigate(Route.Home) { popUpTo(Route.Home) { inclusive = true } }
                                 } else {
-                                    // History -> Edit -> Delete -> History
+                                    navController.popBackStack()
+                                }
+                            }
+                        },
+                        onBack = { navController.popBackStack() },
+                        onDelete = {
+                            viewModel.deleteSession {
+                                if (navController.previousBackStackEntry?.destination?.route?.contains("Working") == true) {
+                                    navController.navigate(Route.Home) { popUpTo(Route.Home) { inclusive = true } }
+                                } else {
                                     navController.popBackStack()
                                 }
                             }
                         }
                     )
                 } else {
-                    // Loading or ID not found
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }

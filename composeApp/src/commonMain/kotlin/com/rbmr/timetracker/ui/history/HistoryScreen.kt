@@ -1,4 +1,4 @@
-package com.rbmr.timetracker.ui
+package com.rbmr.timetracker.ui.history
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -8,8 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.rbmr.timetracker.database.WorkSession
-import com.rbmr.timetracker.utils.getShareHelper
+import com.rbmr.timetracker.data.database.WorkSession
 import com.rbmr.timetracker.utils.toUiString
 import kotlin.time.Instant
 
@@ -17,10 +16,9 @@ import kotlin.time.Instant
 fun HistoryScreen(
     sessions: List<WorkSession>,
     onEdit: (Long) -> Unit,
+    onExport: () -> Unit,
     onBack: () -> Unit
 ) {
-    val shareHelper = getShareHelper()
-
     Scaffold(
         topBar = {
             Row(
@@ -30,14 +28,7 @@ fun HistoryScreen(
             ) {
                 TextButton(onClick = onBack) { Text("Back") }
                 Text("History", style = MaterialTheme.typography.titleMedium)
-                TextButton(onClick = {
-                    val csv = "Start,End,Note\n" + sessions.joinToString("\n") {
-                        val startStr = Instant.fromEpochMilliseconds(it.startTime).toString()
-                        val endStr = it.endTime?.let { t -> Instant.fromEpochMilliseconds(t).toString() } ?: "Ongoing"
-                        "$startStr,$endStr,${it.note}"
-                    }
-                    shareHelper.shareCsv(csv)
-                }) { Text("Export") }
+                TextButton(onClick = onExport) { Text("Export") }
             }
         }
     ) { padding ->

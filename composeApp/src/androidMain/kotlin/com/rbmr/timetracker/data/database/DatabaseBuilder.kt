@@ -1,8 +1,9 @@
-package com.rbmr.timetracker.database
+package com.rbmr.timetracker.data.database
 
 import android.content.Context
 import androidx.room.Room
 import androidx.room.RoomDatabase
+
 lateinit var appContext: Context
 
 actual fun getDatabaseBuilder(): RoomDatabase.Builder<AppDatabase> {
