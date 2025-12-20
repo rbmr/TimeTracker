@@ -101,17 +101,17 @@ fun App() {
                 val session by viewModel.sessionState.collectAsState()
 
                 if (session != null) {
+                    val isOngoing = session!!.endTime == null
+
                     EditScreen(
                         session = session!!,
                         onUpdateSession = viewModel::updateSession,
                         onSaveAndExit = { endTime ->
                             viewModel.saveAndExit(session!!, endTime) {
-                                // Logic: If we came from Working (Punch Out), go Home.
-                                // If we came from History, go back.
-                                // Simple heuristic: pop back stack. If empty or home, good.
-                                // But specifically for "Punch Out", we usually want Home.
-                                if (navController.previousBackStackEntry?.destination?.route?.contains("Working") == true) {
-                                    navController.navigate(Route.Home) { popUpTo(Route.Home) { inclusive = true } }
+                                if (isOngoing) {
+                                    navController.navigate(Route.Home) {
+                                        popUpTo(Route.Home) { inclusive = true }
+                                    }
                                 } else {
                                     navController.popBackStack()
                                 }
@@ -120,8 +120,10 @@ fun App() {
                         onBack = { navController.popBackStack() },
                         onDelete = {
                             viewModel.deleteSession {
-                                if (navController.previousBackStackEntry?.destination?.route?.contains("Working") == true) {
-                                    navController.navigate(Route.Home) { popUpTo(Route.Home) { inclusive = true } }
+                                if (isOngoing) {
+                                    navController.navigate(Route.Home) {
+                                        popUpTo(Route.Home) { inclusive = true }
+                                    }
                                 } else {
                                     navController.popBackStack()
                                 }
