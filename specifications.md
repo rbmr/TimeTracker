@@ -85,5 +85,5 @@ We have 4 pages:
 - Export opens the share window to share or save the entire history as a csv (start iso8601 datetime, and end iso8601 datetime, and notes in full). The item being shared should be a file, not the file contents as text.
 
 General:
-- The entire app should only be able to be used in vertical mode.
+- The entire app is intended to be used in vertical mode. All the formatting (top to bottom, left to right ordering) remains the same in landscape mode.
 - Datetime's should always be made and stored timezone aware using the devices timezone, or defaulting to utc.

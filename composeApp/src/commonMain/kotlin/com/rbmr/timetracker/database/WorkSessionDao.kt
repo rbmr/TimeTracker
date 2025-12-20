@@ -24,4 +24,11 @@ interface WorkSessionDao {
 
     @Query("SELECT * FROM WorkSession WHERE id = :id")
     suspend fun getSessionById(id: Long): WorkSession?
+
+    @Query("SELECT * FROM WorkSession WHERE endTime IS NOT NULL ORDER BY startTime DESC")
+    fun getHistoricalSessions(): Flow<List<WorkSession>>
+
+    @Query("SELECT * FROM WorkSession WHERE endTime IS NULL LIMIT 1")
+    suspend fun getOngoingSession(): WorkSession?
+
 }
