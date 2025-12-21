@@ -48,6 +48,7 @@ kotlin {
             implementation(libs.androidx.room.runtime)
             implementation(libs.sqlite.bundled)
             implementation(libs.kotlinx.serialization.json)
+            implementation(libs.kotlinx.serialization.csv)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
