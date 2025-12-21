@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rbmr.timetracker.data.repository.WorkSessionRepository
 import com.rbmr.timetracker.data.database.WorkSession
+import com.rbmr.timetracker.utils.ToastManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -11,6 +12,7 @@ import kotlinx.coroutines.launch
 
 class EditViewModel(
     private val repository: WorkSessionRepository,
+    private val toastManager: ToastManager,
     private val sessionId: Long
 ) : ViewModel() {
 
@@ -28,6 +30,7 @@ class EditViewModel(
     fun updateSession(updated: WorkSession) {
         viewModelScope.launch {
             repository.update(updated)
+            // No toast here as this happens continuously while editing
         }
     }
 
@@ -37,18 +40,27 @@ class EditViewModel(
         onSuccess: () -> Unit
     ) {
         viewModelScope.launch {
-            // Apply the End Time (Punch Out logic)
-            val finalSession = currentDraft.copy(endTime = endTimeInMillis)
-            repository.update(finalSession)
-            onSuccess()
+            try {
+                val finalSession = currentDraft.copy(endTime = endTimeInMillis)
+                repository.update(finalSession)
+                toastManager.show("Session saved")
+                onSuccess()
+            } catch (e: Exception) {
+                toastManager.show("Error saving session")
+            }
         }
     }
 
     fun deleteSession(onSuccess: () -> Unit) {
         _sessionState.value?.let {
             viewModelScope.launch {
-                repository.delete(it)
-                onSuccess()
+                try {
+                    repository.delete(it)
+                    toastManager.show("Session deleted")
+                    onSuccess()
+                } catch (e: Exception) {
+                    toastManager.show("Error deleting session")
+                }
             }
         }
     }

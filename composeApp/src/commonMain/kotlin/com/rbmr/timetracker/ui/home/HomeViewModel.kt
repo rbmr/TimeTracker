@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rbmr.timetracker.data.repository.WorkSessionRepository
 import com.rbmr.timetracker.data.database.WorkSession
+import com.rbmr.timetracker.utils.ToastManager
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -14,27 +15,31 @@ import kotlinx.coroutines.launch
 import kotlin.time.Clock
 
 @OptIn(FlowPreview::class)
-class HomeViewModel(private val repository: WorkSessionRepository) : ViewModel() {
+class HomeViewModel(
+    private val repository: WorkSessionRepository,
+    private val toastManager: ToastManager // Add parameter
+) : ViewModel() {
 
-    // One stream to rule them all: Null = Idle, Session = Working
     val ongoingSession = repository.ongoingSession
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    // IDLE LOGIC
     fun onPunchIn() {
         if (ongoingSession.value == null) {
             viewModelScope.launch {
-                val newSession = WorkSession(
-                    startTime = Clock.System.now().toEpochMilliseconds(),
-                    endTime = null,
-                    note = ""
-                )
-                repository.insert(newSession)
+                try {
+                    val newSession = WorkSession(
+                        startTime = Clock.System.now().toEpochMilliseconds(),
+                        endTime = null,
+                        note = ""
+                    )
+                    repository.insert(newSession)
+                } catch (e: Exception) {
+                    toastManager.show("Error starting session") // Error Toast
+                }
             }
         }
     }
 
-    // WORKING LOGIC (Merged from WorkingViewModel)
     private val _noteUpdates = MutableStateFlow<String?>(null)
 
     init {
@@ -53,7 +58,12 @@ class HomeViewModel(private val repository: WorkSessionRepository) : ViewModel()
     fun onDeleteSession() {
         viewModelScope.launch {
             ongoingSession.value?.let { session ->
-                repository.delete(session)
+                try {
+                    repository.delete(session)
+                    toastManager.show("Session deleted") // Toast
+                } catch (e: Exception) {
+                    toastManager.show("Error deleting session") // Error Toast
+                }
             }
         }
     }

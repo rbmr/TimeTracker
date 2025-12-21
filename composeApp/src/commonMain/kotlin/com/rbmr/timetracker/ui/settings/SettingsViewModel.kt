@@ -5,24 +5,32 @@ import androidx.lifecycle.viewModelScope
 import com.rbmr.timetracker.data.repository.WorkSessionRepository
 import com.rbmr.timetracker.utils.CsvUtils
 import com.rbmr.timetracker.utils.ShareHelper
+import com.rbmr.timetracker.utils.ToastManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(
     private val repository: WorkSessionRepository,
-    private val shareHelper: ShareHelper
+    private val shareHelper: ShareHelper,
+    private val toastManager: ToastManager
 ) : ViewModel() {
 
     fun exportDatabase() {
         viewModelScope.launch {
-            // Fetch the current state of the database (one-shot)
-            val allSessions = repository.allSessions.first()
+            try {
+                // Fetch the current state of the database (one-shot)
+                val allSessions = repository.allSessions.first()
 
-            // Convert to CSV
-            val csvContent = CsvUtils.sessionsToCsv(allSessions)
+                // Convert to CSV
+                val csvContent = CsvUtils.sessionsToCsv(allSessions)
 
-            // Trigger Share Sheet
-            shareHelper.shareCsv(csvContent)
+
+                // Trigger Share Sheet
+                shareHelper.shareCsv(csvContent)
+                toastManager.show("History exported successfully") // Toast
+            } catch (e: Exception) {
+                toastManager.show("An error occurred during export") // Error Toast
+            }
         }
     }
 
@@ -35,10 +43,13 @@ class SettingsViewModel(
                 // 2. Bulk Insert (Upsert)
                 if (sessions.isNotEmpty()) {
                     repository.insertAll(sessions)
+                    toastManager.show("History imported successfully") // Toast
+                } else {
+                    toastManager.show("No sessions found to import")
                 }
             } catch (e: Exception) {
-                // TODO: Handle error (e.g., expose an error state to UI)
                 println("Import failed: ${e.message}")
+                toastManager.show("Import failed") // Error Toast
             }
         }
     }

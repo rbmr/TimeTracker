@@ -30,7 +30,7 @@ import com.rbmr.timetracker.ui.home.HomeViewModel
 import com.rbmr.timetracker.ui.navigation.Route
 import com.rbmr.timetracker.ui.settings.SettingsScreen
 import com.rbmr.timetracker.ui.settings.SettingsViewModel
-import com.rbmr.timetracker.utils.CsvUtils
+import com.rbmr.timetracker.utils.ToastManager
 import com.rbmr.timetracker.utils.getShareHelper
 
 
@@ -45,6 +45,10 @@ fun App() {
         }
         val repository = remember { WorkSessionRepository(db.workSessionDao()) }
         val shareHelper = remember { getShareHelper() }
+
+        val toastManager = remember { ToastManager() }
+        val snackbarHostState = remember { SnackbarHostState() }
+
         val navController = rememberNavController()
 
         // Determine if we should show the bottom bar (Hide on Edit)
@@ -52,8 +56,16 @@ fun App() {
         val currentDestination = navBackStackEntry?.destination
         val showBottomBar = currentDestination?.hasRoute<Route.Edit>() == false
 
+        // Listen for messages and show Snackbars
+        LaunchedEffect(Unit) {
+            toastManager.messages.collect { message ->
+                snackbarHostState.showSnackbar(message, duration = SnackbarDuration.Short)
+            }
+        }
+
 
         Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
             bottomBar = {
                 if (showBottomBar) {
                     NavigationBar {
@@ -104,7 +116,7 @@ fun App() {
             ) {
                 // HOME
                 composable<Route.Home> {
-                    val viewModel = viewModel { HomeViewModel(repository) }
+                    val viewModel = viewModel { HomeViewModel(repository, toastManager) }
                     val ongoingSession by viewModel.ongoingSession.collectAsState()
 
                     HomeScreen(
@@ -129,7 +141,7 @@ fun App() {
 
                 // SETTINGS
                 composable<Route.Settings> {
-                    val viewModel = viewModel { SettingsViewModel(repository, shareHelper) }
+                    val viewModel = viewModel { SettingsViewModel(repository, shareHelper, toastManager) }
                     SettingsScreen(
                         onExport = { viewModel.exportDatabase() },
                         onImport = { csvContent -> viewModel.importDatabase(csvContent) }
@@ -139,7 +151,7 @@ fun App() {
                 // EDIT (Popup-like)
                 composable<Route.Edit> { backStackEntry ->
                     val route = backStackEntry.toRoute<Route.Edit>()
-                    val viewModel = viewModel { EditViewModel(repository, route.sessionId) }
+                    val viewModel = viewModel { EditViewModel(repository, toastManager, route.sessionId) }
                     val session by viewModel.sessionState.collectAsState()
 
                     if (session != null) {
