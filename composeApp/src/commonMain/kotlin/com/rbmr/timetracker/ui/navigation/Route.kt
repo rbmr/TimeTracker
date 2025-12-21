@@ -6,9 +6,10 @@ sealed class Route {
     @Serializable
     data object Home : Route()
     @Serializable
-    data object Working : Route()
-    @Serializable
     data object History : Route()
+
+    @Serializable
+    data object Settings : Route()
     @Serializable
     data class Edit(val sessionId: Long) : Route()
 }

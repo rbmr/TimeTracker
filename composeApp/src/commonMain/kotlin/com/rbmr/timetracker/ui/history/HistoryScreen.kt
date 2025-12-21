@@ -5,7 +5,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -15,86 +14,56 @@ import com.rbmr.timetracker.utils.formatDuration
 import com.rbmr.timetracker.utils.toUiString
 import kotlin.time.Instant
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
     sessions: List<WorkSession>,
-    onEdit: (Long) -> Unit,
-    onExport: () -> Unit,
-    onBack: () -> Unit
+    onEdit: (Long) -> Unit
 ) {
     Scaffold(
         topBar = {
-            Row(
-                Modifier.fillMaxWidth().padding(16.dp),
-                Arrangement.SpaceBetween,
-                Alignment.CenterVertically
-            ) {
-                TextButton(onClick = onBack) { Text("Back") }
-                Text("History", style = MaterialTheme.typography.titleMedium)
-                TextButton(onClick = onExport) { Text("Export") }
-            }
+            CenterAlignedTopAppBar(title = { Text("History") })
         }
     ) { padding ->
         LazyColumn(modifier = Modifier.padding(padding)) {
             items(sessions) { session ->
-                Card(
-                    onClick = { onEdit(session.id) },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Column(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                    ) {
-                        // ROW 1: Start Time & Duration ---
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Start Time (Left)
-                            Text(
-                                text = Instant.fromEpochMilliseconds(session.startTime).toUiString(),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-
-                            // Duration (Right)
-                            val durationText = if (session.endTime != null) {
-                                formatDuration(
-                                    Instant.fromEpochMilliseconds(session.startTime),
-                                    Instant.fromEpochMilliseconds(session.endTime)
-                                )
-                            } else {
-                                "Ongoing"
-                            }
-
-                            Text(
-                                text = durationText,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        Spacer(Modifier.height(8.dp))
-
-                        // ROW 2: Note (Single Line, Cropped)
-                        // We use a space " " if empty to ensure the row keeps its height
-                        val noteContent = session.note.ifEmpty { " " }
-                        // Flatten newlines to spaces for the preview
-                        val singleLineNote = noteContent.replace(Regex("\\s+"), " ")
-
-                        Text(
-                            text = singleLineNote,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Clip,
-                            softWrap = false,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
+                HistoryItem(session, onClick = { onEdit(session.id) })
             }
+        }
+    }
+}
+
+@Composable
+fun HistoryItem(session: WorkSession, onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = Instant.fromEpochMilliseconds(session.startTime).toUiString(),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = if (session.endTime != null) formatDuration(
+                        Instant.fromEpochMilliseconds(session.startTime),
+                        Instant.fromEpochMilliseconds(session.endTime)
+                    ) else "Ongoing",
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = session.note.ifEmpty { " " }.replace(Regex("\\s+"), " "),
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Clip,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

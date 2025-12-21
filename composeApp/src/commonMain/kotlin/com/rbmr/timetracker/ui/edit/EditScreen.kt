@@ -57,7 +57,7 @@ fun EditScreen(
                 Alignment.CenterVertically
             ) {
                 TextButton(onClick = onBack) { Text("Back") }
-                Text(if (isOngoing) "Punch Out" else "Edit Session", style = MaterialTheme.typography.titleMedium)
+                Text("Edit Session", style = MaterialTheme.typography.titleMedium)
                 TextButton(
                     onClick = onDelete,
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
