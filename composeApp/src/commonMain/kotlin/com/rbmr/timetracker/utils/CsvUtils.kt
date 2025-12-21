@@ -9,13 +9,6 @@ import kotlinx.serialization.csv.Csv
 
 object CsvUtils {
 
-    // Configure the CSV format (standard RFC 4180 rules)
-    @OptIn(ExperimentalSerializationApi::class)
-    private val csv = Csv {
-        hasHeaderRecord = true
-        ignoreUnknownColumns = true
-    }
-
     /**
      * Internal class used ONLY for CSV generation.
      * This separates your Database "shape" (Long timestamps) from your CSV "shape" (ISO Strings).
@@ -33,6 +26,13 @@ object CsvUtils {
      */
     @OptIn(ExperimentalSerializationApi::class)
     fun sessionsToCsv(sessions: List<WorkSession>): String {
+        // Use comma by default for export
+        val csv = Csv {
+            hasHeaderRecord = true
+            ignoreUnknownColumns = true
+            delimiter = ','
+        }
+
         // Convert Database objects to CSV-friendly objects
         val exportList = sessions.map { session ->
             CsvSession(
@@ -54,6 +54,16 @@ object CsvUtils {
     @OptIn(ExperimentalSerializationApi::class)
     fun csvToSessions(csvContent: String): List<WorkSession> {
         if (csvContent.isBlank()) return emptyList()
+
+        val firstLine = csvContent.lineSequence().firstOrNull() ?: return emptyList()
+        val commaCount = firstLine.count { it == ',' }
+        val tabCount = firstLine.count { it == '\t' }
+        val separator = if (tabCount > commaCount) '\t' else ','
+        val csv = Csv {
+            hasHeaderRecord = true
+            ignoreUnknownColumns = true
+            delimiter = separator
+        }
 
         // 1. Let the library parse the CSV string
         val importList = csv.decodeFromString(ListSerializer(CsvSession.serializer()), csvContent)
