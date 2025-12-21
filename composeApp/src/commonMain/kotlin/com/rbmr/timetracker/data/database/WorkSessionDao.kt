@@ -13,6 +13,9 @@ interface WorkSessionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(session: WorkSession): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(sessions: List<WorkSession>)
+
     @Update
     suspend fun update(session: WorkSession)
 

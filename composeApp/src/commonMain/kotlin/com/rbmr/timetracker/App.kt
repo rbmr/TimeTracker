@@ -29,8 +29,10 @@ import com.rbmr.timetracker.ui.home.HomeScreen
 import com.rbmr.timetracker.ui.home.HomeViewModel
 import com.rbmr.timetracker.ui.navigation.Route
 import com.rbmr.timetracker.ui.settings.SettingsScreen
+import com.rbmr.timetracker.ui.settings.SettingsViewModel
 import com.rbmr.timetracker.utils.CsvUtils
 import com.rbmr.timetracker.utils.getShareHelper
+
 
 @Composable
 fun App() {
@@ -58,7 +60,7 @@ fun App() {
                         NavigationBarItem(
                             icon = { Icon(Icons.Default.DateRange, "History") },
                             label = { Text("History") },
-                            selected = currentDestination?.hasRoute<Route.History>() == true,
+                            selected = currentDestination.hasRoute<Route.History>(),
                             onClick = {
                                 navController.navigate(Route.History) {
                                     popUpTo(Route.Home) { saveState = true }
@@ -70,7 +72,7 @@ fun App() {
                         NavigationBarItem(
                             icon = { Icon(Icons.Default.Home, "Home") },
                             label = { Text("Home") },
-                            selected = currentDestination?.hasRoute<Route.Home>() == true,
+                            selected = currentDestination.hasRoute<Route.Home>(),
                             onClick = {
                                 navController.navigate(Route.Home) {
                                     popUpTo(Route.Home) { saveState = true }
@@ -82,7 +84,7 @@ fun App() {
                         NavigationBarItem(
                             icon = { Icon(Icons.Default.Settings, "Settings") },
                             label = { Text("Settings") },
-                            selected = currentDestination?.hasRoute<Route.Settings>() == true,
+                            selected = currentDestination.hasRoute<Route.Settings>(),
                             onClick = {
                                 navController.navigate(Route.Settings) {
                                     popUpTo(Route.Home) { saveState = true }
@@ -117,7 +119,7 @@ fun App() {
 
                 // HISTORY
                 composable<Route.History> {
-                    val viewModel = viewModel { HistoryViewModel(repository, shareHelper) }
+                    val viewModel = viewModel { HistoryViewModel(repository) }
                     val sessions by viewModel.historicalSessions.collectAsState()
                     HistoryScreen(
                         sessions = sessions,
@@ -127,15 +129,10 @@ fun App() {
 
                 // SETTINGS
                 composable<Route.Settings> {
-                    val viewModel = viewModel { HistoryViewModel(repository, shareHelper) }
-                    val allSessions by viewModel.historicalSessions.collectAsState()
-
+                    val viewModel = viewModel { SettingsViewModel(repository, shareHelper) }
                     SettingsScreen(
-                        onExport = {
-                            val csv = CsvUtils.sessionsToCsv(allSessions)
-                            shareHelper.shareCsv(csv)
-                        },
-                        onImport = { /* TODO: Implement Import */ }
+                        onExport = { viewModel.exportDatabase() },
+                        onImport = { csvContent -> viewModel.importDatabase(csvContent) }
                     )
                 }
 

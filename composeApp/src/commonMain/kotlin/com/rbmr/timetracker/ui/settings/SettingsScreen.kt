@@ -6,13 +6,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.rbmr.timetracker.utils.rememberFileImporter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onExport: () -> Unit,
-    onImport: () -> Unit
+    onImport: (String) -> Unit
 ) {
+    val importer = rememberFileImporter { content ->
+        if (content != null) {
+            onImport(content)
+        }
+    }
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(title = { Text("Settings") })
@@ -31,7 +38,7 @@ fun SettingsScreen(
             }
 
             OutlinedButton(
-                onClick = onImport,
+                onClick = { importer.launch() },
                 modifier = Modifier.fillMaxWidth().height(56.dp)
             ) {
                 Text("Import History from CSV")
