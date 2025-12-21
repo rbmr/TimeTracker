@@ -3,13 +3,11 @@ package com.rbmr.timetracker.ui.working
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rbmr.timetracker.data.repository.WorkSessionRepository
-import com.rbmr.timetracker.data.database.WorkSession
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 

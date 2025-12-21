@@ -8,7 +8,6 @@ import com.rbmr.timetracker.utils.CsvUtils
 import com.rbmr.timetracker.utils.ShareHelper
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
-import kotlin.time.Instant
 
 class HistoryViewModel(
     private val repository: WorkSessionRepository,
