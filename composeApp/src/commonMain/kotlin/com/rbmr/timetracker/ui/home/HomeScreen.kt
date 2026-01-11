@@ -8,7 +8,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.rbmr.timetracker.data.database.WorkSession
 import com.rbmr.timetracker.ui.components.DateTimeRow
-import com.rbmr.timetracker.ui.components.NoteRow
+import com.rbmr.timetracker.ui.components.SessionInputContent
+import com.rbmr.timetracker.ui.form.SessionForm
 import com.rbmr.timetracker.utils.formatDuration
 import kotlinx.coroutines.delay
 import kotlin.time.Clock
@@ -17,11 +18,10 @@ import kotlin.time.Instant
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    ongoingSession: WorkSession?,
+    form: SessionForm?,
+    session: WorkSession?,
     onPunchIn: () -> Unit,
     onPunchOut: (Long) -> Unit,
-    onNoteChange: (String) -> Unit,
-    onUpdateStartTime: (Long) -> Unit,
     onDelete: () -> Unit
 ) {
     Scaffold(
@@ -33,7 +33,7 @@ fun HomeScreen(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentAlignment = Alignment.Center
         ) {
-            if (ongoingSession == null) {
+            if (form == null || session == null) {
                 // STATE 1: IDLE
                 Button(
                     onClick = onPunchIn,
@@ -45,10 +45,9 @@ fun HomeScreen(
             } else {
                 // STATE 2: WORKING
                 WorkingContent(
-                    session = ongoingSession,
-                    onPunchOut = { onPunchOut(ongoingSession.id) },
-                    onNoteChange = onNoteChange,
-                    onUpdateStartTime = onUpdateStartTime,
+                    form = form,
+                    session = session,
+                    onPunchOut = { onPunchOut(session.id) },
                     onDelete = onDelete
                 )
             }
@@ -58,10 +57,9 @@ fun HomeScreen(
 
 @Composable
 private fun WorkingContent(
+    form: SessionForm,
     session: WorkSession,
     onPunchOut: () -> Unit,
-    onNoteChange: (String) -> Unit,
-    onUpdateStartTime: (Long) -> Unit,
     onDelete: () -> Unit
 ) {
     // Ticking Clock
@@ -87,12 +85,7 @@ private fun WorkingContent(
 
         Spacer(Modifier.height(32.dp))
 
-        // Controls
-        DateTimeRow("Start Time", Instant.fromEpochMilliseconds(session.startTime)) {
-            onUpdateStartTime(it.toEpochMilliseconds())
-        }
-
-        NoteRow(note = session.note, onUpdateNote = onNoteChange)
+        SessionInputContent(form = form, session = session)
 
         Spacer(Modifier.weight(1f))
 
@@ -104,7 +97,7 @@ private fun WorkingContent(
                 modifier = Modifier.weight(1f)
             ) { Text("Delete") }
 
-            // Punch Out (Edit)
+            // Punch Out (Navigates to Edit)
             Button(
                 onClick = onPunchOut,
                 modifier = Modifier.weight(2f)

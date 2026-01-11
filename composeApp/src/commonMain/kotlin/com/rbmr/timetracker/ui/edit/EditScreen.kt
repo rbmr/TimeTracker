@@ -9,46 +9,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.rbmr.timetracker.data.database.WorkSession
-import com.rbmr.timetracker.ui.components.DateTimeRow
-import com.rbmr.timetracker.ui.components.NoteRow
+import com.rbmr.timetracker.ui.components.SessionInputContent
+import com.rbmr.timetracker.ui.form.SessionForm
 import com.rbmr.timetracker.utils.formatDuration
-import kotlin.time.Clock
 import kotlin.time.Instant
 
 @Composable
 fun EditScreen(
+    form: SessionForm,
     session: WorkSession,
-    onUpdateSession: (WorkSession) -> Unit,
-    onSaveAndExit: (Long) -> Unit, // Pass end time
+    onSaveAndExit: () -> Unit,
     onBack: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val isOngoing = remember { session.endTime == null }
-
-    // Local State for immediate UI feedback
-    var startTime by remember { mutableStateOf(Instant.fromEpochMilliseconds(session.startTime)) }
-    var endTime by remember {
-        mutableStateOf(
-            if (session.endTime != null) Instant.fromEpochMilliseconds(session.endTime)
-            else Clock.System.now()
-        )
-    }
-    var note by remember { mutableStateOf(session.note) }
-
-    // Helper to sync local changes to DB immediately (for historical edits)
-    fun persistChanges() {
-        val updated = session.copy(
-            startTime = startTime.toEpochMilliseconds(),
-            endTime = if (!isOngoing) endTime.toEpochMilliseconds() else null,
-            note = note
-        )
-        onUpdateSession(updated)
-    }
-
-    // Auto-save effects (Debouncing could be added here or in VM, simplified here)
-    LaunchedEffect(startTime, note) { persistChanges() }
-    LaunchedEffect(endTime) { if (!isOngoing) persistChanges() }
-
     Scaffold(
         topBar = {
             Row(
@@ -71,27 +44,28 @@ fun EditScreen(
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
+            // Header: Total Duration
+            val endInstant = session.endTime?.let { Instant.fromEpochMilliseconds(it) }
             Text(
-                text = "Total Time: ${formatDuration(startTime, endTime)}",
+                text = "Total Time: " + if (endInstant != null) {
+                    formatDuration(Instant.fromEpochMilliseconds(session.startTime), endInstant)
+                } else {
+                    "Ongoing"
+                },
                 style = MaterialTheme.typography.headlineMedium
             )
 
             Spacer(Modifier.height(24.dp))
-            DateTimeRow("Start Time", startTime) { startTime = it }
-            DateTimeRow("End Time", endTime) { endTime = it }
 
-            Spacer(Modifier.height(16.dp))
-
-            NoteRow(
-                note = note,
-                onUpdateNote = { newNote -> note = newNote }
-            )
+            // Shared Input Content
+            SessionInputContent(form = form, session = session)
 
             Spacer(Modifier.weight(1f))
 
+            // Save Button (Primary action for historical edits)
             Button(
                 modifier = Modifier.fillMaxWidth(),
-                onClick = { onSaveAndExit(endTime.toEpochMilliseconds()) }
+                onClick = onSaveAndExit
             ) { Text("Save") }
         }
     }

@@ -33,7 +33,6 @@ import com.rbmr.timetracker.ui.settings.SettingsViewModel
 import com.rbmr.timetracker.utils.ToastManager
 import com.rbmr.timetracker.utils.getShareHelper
 
-
 @Composable
 fun App() {
     MaterialTheme {
@@ -45,10 +44,8 @@ fun App() {
         }
         val repository = remember { WorkSessionRepository(db.workSessionDao()) }
         val shareHelper = remember { getShareHelper() }
-
         val toastManager = remember { ToastManager() }
         val snackbarHostState = remember { SnackbarHostState() }
-
         val navController = rememberNavController()
 
         // Determine if we should show the bottom bar (Hide on Edit)
@@ -62,7 +59,6 @@ fun App() {
                 snackbarHostState.showSnackbar(message, duration = SnackbarDuration.Short)
             }
         }
-
 
         Scaffold(
             snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -117,14 +113,14 @@ fun App() {
                 // HOME
                 composable<Route.Home> {
                     val viewModel = viewModel { HomeViewModel(repository, toastManager) }
-                    val ongoingSession by viewModel.ongoingSession.collectAsState()
+                    val form by viewModel.sessionForm.collectAsState()
+                    val session = form?.uiSession?.collectAsState()?.value
 
                     HomeScreen(
-                        ongoingSession = ongoingSession,
+                        form = form,
+                        session = session,
                         onPunchIn = viewModel::onPunchIn,
                         onPunchOut = { id -> navController.navigate(Route.Edit(id)) },
-                        onNoteChange = viewModel::onNoteChange,
-                        onUpdateStartTime = viewModel::onUpdateStartTime,
                         onDelete = viewModel::onDeleteSession,
                     )
                 }
@@ -148,20 +144,20 @@ fun App() {
                     )
                 }
 
-                // EDIT (Popup-like)
+                // EDIT
                 composable<Route.Edit> { backStackEntry ->
                     val route = backStackEntry.toRoute<Route.Edit>()
                     val viewModel = viewModel { EditViewModel(repository, toastManager, route.sessionId) }
-                    val session by viewModel.sessionState.collectAsState()
 
-                    if (session != null) {
-                        val isOngoing = session!!.endTime == null
+                    val form by viewModel.form.collectAsState()
 
+                    if (form != null) {
+                        val session by form!!.uiSession.collectAsState()
                         EditScreen(
-                            session = session!!,
-                            onUpdateSession = viewModel::updateSession,
-                            onSaveAndExit = { endTime ->
-                                viewModel.saveAndExit(session!!, endTime) {
+                            form = form!!,
+                            session = session,
+                            onSaveAndExit = {
+                                viewModel.saveAndExit {
                                     navController.popBackStack()
                                 }
                             },
